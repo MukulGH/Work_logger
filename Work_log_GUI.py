@@ -1,11 +1,12 @@
 import sys
 import datetime
-from PyQt5.QtWidgets import QApplication, QWidget, QPushButton, QLineEdit, QVBoxLayout, QLabel
-from worklog_interaction import get_latest_excel_file, update_worklog
-from worklog_interaction import get_start_time_from_sheet
+from PyQt5.QtWidgets import (QApplication, QWidget, QPushButton, QLineEdit, QVBoxLayout, QLabel,
+                             QComboBox)
+from worklog_interaction import get_latest_excel_file, update_worklog, get_account_categories, get_start_time_from_sheet
 
 import subprocess
 import os
+
 
 class MyWindow(QWidget):
     def __init__(self):
@@ -19,6 +20,8 @@ class MyWindow(QWidget):
         self.textbox_start_time = QLineEdit(self)
         self.textbox_hours = QLineEdit(self)
         self.textbox_task = QLineEdit(self)
+        self.dropdown_work_eligible = QComboBox(self)
+        self.dropdown_account = QComboBox(self)
         self.button_submit = QPushButton('Submit', self)
 
         self.initUI()
@@ -36,10 +39,22 @@ class MyWindow(QWidget):
         self.textbox_task.setPlaceholderText('Task...')
         self.output_previous_start_time.setReadOnly(True)
 
+        self.dropdown_work_eligible.addItems(['Yes', 'No'])
+        self.dropdown_work_eligible.setCurrentText('Yes')
+
+        directory = os.getcwd()
+        latest_excel_file = get_latest_excel_file(directory)
+        if latest_excel_file:
+            today = datetime.date.today()
+            sheet_name = today.strftime("%m_%d_%Y")
+            categories = get_account_categories(latest_excel_file, sheet_name)
+            self.dropdown_account.addItems(categories)
+
         self.setStyleSheet("QWidget { background-color: #799B9E; }"
                            "QPushButton { background-color: #9E6647; color: white; font-size: 27px; min-height: 45px; min-width: 150px;}"
                            "QLineEdit { background-color: lightgray; font-size: 27px; min-height: 30px; }"
-                           "QLabel { color: white; font-size: 27px; }")
+                           "QLabel { color: white; font-size: 27px; }"
+                           "QComboBox { background-color: lightgray; font-size: 27px; min-height: 30px; }")
 
         layout.addWidget(self.button_create)
         layout.addWidget(self.button_read)
@@ -48,6 +63,8 @@ class MyWindow(QWidget):
         layout.addWidget(self.textbox_start_time)
         layout.addWidget(self.textbox_hours)
         layout.addWidget(self.textbox_task)
+        layout.addWidget(self.dropdown_work_eligible)
+        layout.addWidget(self.dropdown_account)
         layout.addWidget(self.button_submit)
 
         self.setLayout(layout)
@@ -68,26 +85,27 @@ class MyWindow(QWidget):
         start_time = self.textbox_start_time.text()
         hours = self.textbox_hours.text()
         task = self.textbox_task.text()
-        
+        work_eligible = self.dropdown_work_eligible.currentText()
+        account = self.dropdown_account.currentText()
+
         directory = os.getcwd()
         latest_excel_file = get_latest_excel_file(directory)
-        
+
         if latest_excel_file:
             today = datetime.date.today()
             sheet_name = today.strftime("%m_%d_%Y")
-            update_worklog(latest_excel_file, sheet_name, start_time, task, hours)
-            
+            update_worklog(latest_excel_file, sheet_name, start_time, task, hours, work_eligible, account)
+
             # Get the new start time after submitting the information
             new_start_time = get_start_time_from_sheet(latest_excel_file, sheet_name)
-            print (new_start_time)
-            
+            print(new_start_time)
+
             # Update the "Previous Start Time" field in the GUI
             self.output_previous_start_time.setText(new_start_time)
-            
+
             print("Information submitted.")
         else:
             print("No Excel files found in the directory.")
-
 
 
 # Create app
